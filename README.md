@@ -1,9 +1,9 @@
-# Productivist Ethereum smart contracts
+# PRODToken : Productivist ERC20 token
 
 
 ## Getting Started
 
-Productivist integrates with [Truffle](https://github.com/ConsenSys/truffle), an Ethereum development environment. 
+Productivist smart contracts integrates with [Truffle](https://github.com/ConsenSys/truffle), an Ethereum development environment. 
 
 To install and test the Productivist smart contracts, run the following :
 ```sh
@@ -19,4 +19,4 @@ If you find a security issue, please email [sebastien.griffon@playitopen.org](ma
 
 
 ## License
-Code released under the [MIT License](https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/LICENSE).
+Code released under the [MIT License](https://github.com/Productivist/productivist-token/blob/master/LICENSE).
