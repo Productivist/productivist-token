@@ -1,7 +1,7 @@
 import assertRevert from '../helpers/assertRevert';
 const PRODToken = artifacts.require('PRODToken');
 
-contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
+contract('PRODToken Standard ERC20', function ([_, owner, recipient, anotherAccount]) {
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
   const TOKEN_DECIMAL = 6;
@@ -77,7 +77,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       const to = ZERO_ADDRESS;
 
       it('reverts', async function () {
-        await assertRevert(this.token.transfer(to, 100, { from: owner }));
+        await assertRevert(this.token.transfer(to, MAX_TOKEN_SUPPLY, { from: owner }));
       });
     });
   });
@@ -87,7 +87,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       const spender = recipient;
 
       describe('when the sender has enough balance', function () {
-        const amount = 100;
+        const amount = MAX_TOKEN_SUPPLY;
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.approve(spender, amount, { from: owner });
@@ -123,7 +123,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       });
 
       describe('when the sender does not have enough balance', function () {
-        const amount = 101;
+        const amount = MAX_TOKEN_SUPPLY + 1;
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.approve(spender, amount, { from: owner });
@@ -160,7 +160,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     });
 
     describe('when the spender is the zero address', function () {
-      const amount = 100;
+      const amount = MAX_TOKEN_SUPPLY;
       const spender = ZERO_ADDRESS;
 
       it('approves the requested amount', async function () {
@@ -190,11 +190,11 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
       describe('when the spender has enough approved balance', function () {
         beforeEach(async function () {
-          await this.token.approve(spender, 100, { from: owner });
+          await this.token.approve(spender, MAX_TOKEN_SUPPLY, { from: owner });
         });
 
         describe('when the owner has enough balance', function () {
-          const amount = 100;
+          const amount = MAX_TOKEN_SUPPLY;
 
           it('transfers the requested amount', async function () {
             await this.token.transferFrom(owner, to, amount, { from: spender });
@@ -225,7 +225,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         });
 
         describe('when the owner does not have enough balance', function () {
-          const amount = 101;
+          const amount = MAX_TOKEN_SUPPLY + 1;
 
           it('reverts', async function () {
             await assertRevert(this.token.transferFrom(owner, to, amount, { from: spender }));
@@ -235,11 +235,11 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
       describe('when the spender does not have enough approved balance', function () {
         beforeEach(async function () {
-          await this.token.approve(spender, 99, { from: owner });
+          await this.token.approve(spender, MAX_TOKEN_SUPPLY - 1, { from: owner });
         });
 
         describe('when the owner has enough balance', function () {
-          const amount = 100;
+          const amount = MAX_TOKEN_SUPPLY;
 
           it('reverts', async function () {
             await assertRevert(this.token.transferFrom(owner, to, amount, { from: spender }));
@@ -247,7 +247,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         });
 
         describe('when the owner does not have enough balance', function () {
-          const amount = 101;
+          const amount = MAX_TOKEN_SUPPLY + 1;
 
           it('reverts', async function () {
             await assertRevert(this.token.transferFrom(owner, to, amount, { from: spender }));
@@ -257,7 +257,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     });
 
     describe('when the recipient is the zero address', function () {
-      const amount = 100;
+      const amount = MAX_TOKEN_SUPPLY;
       const to = ZERO_ADDRESS;
 
       beforeEach(async function () {
@@ -275,7 +275,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       const spender = recipient;
 
       describe('when the sender has enough balance', function () {
-        const amount = 100;
+        const amount = MAX_TOKEN_SUPPLY;
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.decreaseApproval(spender, amount, { from: owner });
@@ -311,7 +311,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       });
 
       describe('when the sender does not have enough balance', function () {
-        const amount = 101;
+        const amount = MAX_TOKEN_SUPPLY + 1;
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.decreaseApproval(spender, amount, { from: owner });
@@ -348,7 +348,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     });
 
     describe('when the spender is the zero address', function () {
-      const amount = 100;
+      const amount = MAX_TOKEN_SUPPLY;
       const spender = ZERO_ADDRESS;
 
       it('decreases the requested amount', async function () {
@@ -371,7 +371,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('increase approval', function () {
-    const amount = 100;
+    const amount = MAX_TOKEN_SUPPLY;
 
     describe('when the spender is not the zero address', function () {
       const spender = recipient;
@@ -411,7 +411,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       });
 
       describe('when the sender does not have enough balance', function () {
-        const amount = 101;
+        const amount = MAX_TOKEN_SUPPLY + 1;
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.increaseApproval(spender, amount, { from: owner });
