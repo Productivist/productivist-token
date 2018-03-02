@@ -1,5 +1,9 @@
 # PRODToken : Productivist ERC20 token
 
+Productivist issued 100,000,000 PROD tokens total, most of which will be put on sale (65%). 
+PROD token is developed on Ethereum’s blockchain and conform to the ERC20 Token Standard.
+During your KYC process, you will be asked to provide your Ethereum address to receive your tokens.
+Tokens will be delivered with smart contract shortly after the ICO ends.
 
 ## Getting Started
 

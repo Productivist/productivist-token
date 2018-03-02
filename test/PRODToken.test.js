@@ -1,7 +1,7 @@
 import assertRevert from './helpers/assertRevert';
 const PRODToken = artifacts.require('PRODToken');
 
-contract('PRODToken Standard ERC20', function ([_, owner, recipient, anotherAccount]) {
+contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
   const TOKEN_DECIMAL = 6;

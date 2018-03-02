@@ -1,6 +1,6 @@
-import EVMRevert from '../helpers/EVMRevert';
-import latestTime from '../helpers/latestTime';
-import { increaseTimeTo, duration } from '../helpers/increaseTime';
+import EVMRevert from './helpers/EVMRevert';
+import latestTime from './helpers/latestTime';
+import { increaseTimeTo, duration } from './helpers/increaseTime';
 
 const BigNumber = web3.BigNumber;
 
@@ -10,11 +10,11 @@ require('chai')
   .should();
 
 const PRODToken = artifacts.require('PRODToken');
-const TokenVesting = artifacts.require('TokenVesting');
+const PRODTokenVesting = artifacts.require('PRODTokenVesting');
 
-contract('TokenVesting', function ([_, owner, beneficiary]) {
-  
+contract('PRODTokenVesting', function ([_, owner, beneficiary]) {
   const TOKEN_DECIMAL = 6;
+  const MAX_TOKEN_SUPPLY = new BigNumber(100000000 * 10 ** TOKEN_DECIMAL);
   const amount = new BigNumber(1000000 * 10 ** TOKEN_DECIMAL);
   
   beforeEach(async function () {
@@ -24,7 +24,7 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
     this.cliff = duration.years(1);
     this.duration = duration.years(2);
 
-    this.vesting = await TokenVesting.new(beneficiary, this.start, this.cliff, this.duration, true, { from: owner });
+    this.vesting = await PRODTokenVesting.new(beneficiary, this.start, this.cliff, this.duration, true, { from: owner });
 
     await this.token.transfer(this.vesting.address, amount, { from: owner });
   });
@@ -76,7 +76,7 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
   });
 
   it('should fail to be revoked by owner if revocable not set', async function () {
-    const vesting = await TokenVesting.new(beneficiary, this.start, this.cliff, this.duration, false, { from: owner });
+    const vesting = await PRODTokenVesting.new(beneficiary, this.start, this.cliff, this.duration, false, { from: owner });
     await vesting.revoke(this.token.address, { from: owner }).should.be.rejectedWith(EVMRevert);
   });
 
@@ -88,7 +88,7 @@ contract('TokenVesting', function ([_, owner, beneficiary]) {
     await this.vesting.revoke(this.token.address, { from: owner });
 
     const ownerBalance = await this.token.balanceOf(owner);
-    ownerBalance.should.bignumber.equal(amount.sub(vested));
+    ownerBalance.should.bignumber.equal(MAX_TOKEN_SUPPLY.sub(vested));
   });
 
   it('should keep the vested tokens when revoked by owner', async function () {
