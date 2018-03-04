@@ -5,5 +5,5 @@ var PRODToken = artifacts.require('PRODToken');
 //    with `git checkout HEAD -- migrations/2_deploy_contracts.js`)
 
 module.exports = function (deployer) {
-  deployer.deploy(PRODToken, '0x6429d807dc672a013ca938f05fba4bf506d84c8a');
+  deployer.deploy(PRODToken, '0x627306090abab3a6e1400e9345bc60c78a8bef57');
 };

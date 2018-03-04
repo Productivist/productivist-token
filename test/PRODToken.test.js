@@ -4,6 +4,12 @@ const PRODToken = artifacts.require('PRODToken');
 contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
+  const batchListAccount = [
+    '0xf17f52151ebef6c7334fad080c5704d77216b732',
+    '0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef',
+    '0x821aea9a577a9b44299b9c15c88cf3087f3b5544'
+  ];
+  
   const TOKEN_DECIMAL = 6;
   const MAX_TOKEN_SUPPLY = 100000000 * 10 ** TOKEN_DECIMAL;
 
@@ -72,12 +78,113 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         });
       });
     });
+  });
 
-    describe('when the recipient is the zero address', function () {
-      const to = ZERO_ADDRESS;
+  describe('batch', async function () {
+
+    describe('when the recipient is not the zero address', function () {
+
+      describe('when the sender does not have enough balance', function () {
+        const batchListAmount = [
+          50000000 * 10 ** TOKEN_DECIMAL,
+          50000000 * 10 ** TOKEN_DECIMAL,
+          50000000 * 10 ** TOKEN_DECIMAL
+        ];
+
+        it('reverts', async function () {
+          await assertRevert(this.token.batch(batchListAccount, batchListAmount, { from: owner }));
+          const senderBalance = await this.token.balanceOf(owner);
+          assert.equal(senderBalance, MAX_TOKEN_SUPPLY);
+        });
+      });
+
+      describe('when the sender has enough balance', function () {
+        const batchListAmount = [
+          25000000 * 10 ** TOKEN_DECIMAL,
+          25000000 * 10 ** TOKEN_DECIMAL,
+          50000000 * 10 ** TOKEN_DECIMAL
+        ];
+
+        it('transfers the requested amount', async function () {
+          
+          await this.token.batch(batchListAccount, batchListAmount, { from: owner });
+
+          const senderBalance = await this.token.balanceOf(owner);
+          assert.equal(senderBalance, 0);
+
+          const recipientBalance1 = await this.token.balanceOf(batchListAccount[0]);
+          assert.equal(recipientBalance1, batchListAmount[0]);
+
+          const recipientBalance2 = await this.token.balanceOf(batchListAccount[1]);
+          assert.equal(recipientBalance2, batchListAmount[1]);
+
+          const recipientBalance3 = await this.token.balanceOf(batchListAccount[2]);
+          assert.equal(recipientBalance3, batchListAmount[2]);          
+        });
+
+        it('emits the transfer events', async function () {
+          const { logs } = await this.token.batch(batchListAccount, batchListAmount, { from: owner });
+
+          assert.equal(logs.length, 3);
+          assert.equal(logs[0].event, 'Transfer');
+          assert.equal(logs[0].args.from, owner);
+          assert.equal(logs[0].args.to, batchListAccount[0]);
+          assert(logs[0].args.value.eq(batchListAmount[0]));
+        });
+      });
+    });
+
+    describe('when one recipient is the zero address', function () {
+      const batchListAmount = [25000000 * 10 ** TOKEN_DECIMAL, 25000000 * 10 ** TOKEN_DECIMAL, 50000000 * 10 ** TOKEN_DECIMAL];
 
       it('reverts', async function () {
-        await assertRevert(this.token.transfer(to, MAX_TOKEN_SUPPLY, { from: owner }));
+        await assertRevert(this.token.batch([batchListAccount[0], ZERO_ADDRESS, batchListAccount[2]], batchListAmount, { from: owner }));
+        const senderBalance = await this.token.balanceOf(owner);
+        assert.equal(senderBalance, MAX_TOKEN_SUPPLY);
+      });
+    });
+
+    describe('when 50 recipient ', function () {
+            
+      let batch50Account = [50];
+      for (var i = 0; i < 50; i++) {
+        let address = '0x2bdd21761a483f71054e14f5b827213567971c' + (i + 16).toString(16);
+        batch50Account[i] = address;
+      }
+      let batchListAmount = [50];
+      for (var i = 0; i < 50; i++) {        
+        batchListAmount[i] = 100 * 10 ** TOKEN_DECIMAL;
+      }
+
+      it('should perform batch for 50 accounts that should have 100 PROD each', async function () {
+
+        await this.token.batch(batch50Account, batchListAmount, { from: owner });
+        for (var i = 0; i < batch50Account.length; i++) {
+          const tokenBalance = await this.token.balanceOf(batch50Account[i]);          
+          assert.equal(tokenBalance, 100 * 10 ** TOKEN_DECIMAL);
+        }
+      });
+    });
+
+    describe('when 100 recipient ', function () {
+            
+      let batch100Account = [100];
+      for (var i = 0; i < 100; i++) {
+        let address = '0x2bdd21761a483f71054e14f5b827213567971c' + (i + 16).toString(16);
+        batch100Account[i] = address;
+      }
+      let batchListAmount = [100];
+      for (var i = 0; i < 100; i++) {        
+        batchListAmount[i] = 100 * 10 ** TOKEN_DECIMAL;
+      }
+
+      it('should perform batch for 100 accounts that should have 100 PROD each', async function () {
+
+        await this.token.batch(batch100Account, batchListAmount, { from: owner });
+        for (var i = 0; i < batch100Account.length; i++) {
+          const tokenBalance = await this.token.balanceOf(batch100Account[i]);          
+          assert.equal(tokenBalance, 100 * 10 ** TOKEN_DECIMAL);
+        }
       });
     });
   });

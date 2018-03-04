@@ -347,7 +347,7 @@ contract PRODTokenVesting is Ownable {
   mapping (address => bool) public revoked;
 
   /**
-   * @dev Creates a vesting contract that vests its balance of any ERC20 token to the
+   * @dev Creates a vesting contract that vests its balance of PRODToken to the
    * _beneficiary, gradually in a linear fashion until _start + _duration. By then all
    * of the balance will have vested.
    * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
