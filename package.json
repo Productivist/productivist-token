@@ -52,11 +52,13 @@
     "mocha-lcov-reporter": "^1.3.0",
     "solidity-coverage": "^0.4.3",
     "solium": "^1.1.2",
-    "truffle": "4.0.6",
-    "truffle-hdwallet-provider": "0.0.3"
+    "truffle": "4.0.6"    
   },
   "dependencies": {
     "dotenv": "^4.0.0",
-    "ethjs-abi": "^0.2.1"
+    "ethjs-abi": "^0.2.1",
+    "fast-csv": "^2.4.1",
+    "truffle-contract": "3.0.1",
+    "truffle-hdwallet-provider": "DTaste/truffle-hdwallet-provider"
   }
 }
