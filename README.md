@@ -1,18 +1,16 @@
 # PRODToken : Productivist ERC20 token
 
-Productivist will initially issue 100 million PROD tokens.
+Productivist will initially issue 385 million PROD tokens.
 
-61,7 million PROD tokens (61,7%) will be allocated to the Token Sale. 
+61,7% PROD tokens will be allocated to the token sale purchasers, 17,3% to the foundation, 16% to the founder and 5% to bounty programs. (check finishMinting function)
 
 The final amount will depend on the bonuses that would be applied to the token sale. 
-
-All unsold tokens will be burned.
 
 PROD token is developed on Ethereum’s blockchain and conform to the ERC20 Token Standard.
 
 During your KYC process, you will be asked to provide your Ethereum address to receive your tokens.
 
-Tokens will be delivered with smart contract shortly after the ICO ends.
+Tokens will be delivered with smart contract shortly after the ICO ends. Once finishMinting is called, tokens will no longer be issued.
 
 ## Getting Started
 
