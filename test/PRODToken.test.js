@@ -1,4 +1,5 @@
 import assertRevert from './helpers/assertRevert';
+import BigNumber from 'bignumber.js'
 const PRODToken = artifacts.require('PRODToken');
 
 contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
@@ -10,21 +11,84 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     '0x821aea9a577a9b44299b9c15c88cf3087f3b5544'
   ];
   
-  const TOKEN_DECIMAL = 6;
-  const MAX_TOKEN_SUPPLY = 100000000 * 10 ** TOKEN_DECIMAL;
+  const TOKEN_DECIMAL = 8;
+  const MAX_TOKEN_SUPPLY = new BigNumber(385000000 * 10 ** TOKEN_DECIMAL);
+
+
 
   beforeEach(async function () {
-    this.token = await PRODToken.new(owner, { from: owner });
+    this.token = await PRODToken.new({ from: owner });
+  });
+
+  describe('mint', function () {  
+    it('should start with the correct cap', async function () {
+      let _cap = await this.token.cap();
+      assert(MAX_TOKEN_SUPPLY.eq(_cap));
+    });
+    
+    it('should fail to mint if not owner', async function () {
+      await assertRevert(this.token.mint(owner, 100, { from: anotherAccount }));
+    });
+
+    describe('when the requested amount of token is less than cap', function () {
+      it('should mint', async function () {
+        const result = await this.token.mint(owner, 100, { from: owner });
+        assert.equal(result.logs[0].event, 'Mint');
+      });
+    });
+
+    describe('when the requested amount of token exceeds the cap', function () {
+      it('should fail to mint and revert', async function () {
+        await this.token.mint(owner, MAX_TOKEN_SUPPLY.minus(1), { from: owner });
+        await assertRevert(this.token.mint(owner, 100, { from: owner }));
+      });
+    });
+
+    describe('After the cap is reached', function () {
+      it('should fail to mint and revert', async function () {
+        await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+        await assertRevert(this.token.mint(owner, 1));
+      });
+    });
+  });
+
+  describe('finishMinting', function () {
+    const PURCHASER_AMOUNT = new BigNumber(100000000 * 10 ** TOKEN_DECIMAL);
+    const ONE_PER_THOUSAND = PURCHASER_AMOUNT.dividedToIntegerBy(617);
+    it('should allocate Foundation, Team and Bounty ', async function () {
+      await this.token.mint(owner, PURCHASER_AMOUNT, { from: owner });
+      await this.token.finishMinting({ from: owner });
+      let bountyBalance = await this.token.balanceOf('0x84bE27E1d3AeD5e6CF40445891d3e2AB7d3d98e8');  
+      assert(bountyBalance.eq(ONE_PER_THOUSAND.mul(50)));
+
+      let foundationBalance = await this.token.balanceOf('0xBa893462c1b714bFD801e918a4541e056f9bd924');
+      assert(foundationBalance.eq(ONE_PER_THOUSAND.mul(173)));
+
+      let teamBalance = await this.token.balanceOf('0x2418C46F2FA422fE8Cd0BF56Df5e27CbDeBB2590');
+      assert(teamBalance.eq(ONE_PER_THOUSAND.mul(160)));
+
+      assert(teamBalance.plus(foundationBalance).plus(bountyBalance).plus(ONE_PER_THOUSAND.mul(617)).eq(ONE_PER_THOUSAND.mul(1000)));
+    });
+    it('should revert when minting after finishMinting ', async function () {
+      await this.token.mint(owner, PURCHASER_AMOUNT, { from: owner });
+      await this.token.finishMinting({ from: owner });
+      await assertRevert(this.token.mint(owner, 1));
+    });
   });
 
   describe('total supply', function () {
     it('returns the total amount of tokens', async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
       const totalSupply = await this.token.totalSupply();
-      assert.equal(totalSupply, MAX_TOKEN_SUPPLY);
+      assert(MAX_TOKEN_SUPPLY.eq(totalSupply));
     });
   });
 
   describe('balanceOf', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
+
     describe('when the requested account has no tokens', function () {
       it('returns zero', async function () {
         const balance = await this.token.balanceOf(anotherAccount);
@@ -37,19 +101,23 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       it('returns the total amount of tokens', async function () {
         const balance = await this.token.balanceOf(owner);
 
-        assert.equal(balance, MAX_TOKEN_SUPPLY);
+        assert(MAX_TOKEN_SUPPLY.eq(balance));
       });
     });
   });
 
   describe('transfer', function () {
     describe('when the recipient is not the zero address', function () {
+      beforeEach(async function () {
+        await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+      });
+
       const to = recipient;
 
       describe('when the sender does not have enough balance', function () {
-        const amount = MAX_TOKEN_SUPPLY + 1;
+        const amount = MAX_TOKEN_SUPPLY.plus(1);
 
-        it('reverts', async function () {
+        it('reverts', async function () {	  
           await assertRevert(this.token.transfer(to, amount, { from: owner }));
         });
       });
@@ -64,7 +132,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
           assert.equal(senderBalance, 0);
 
           const recipientBalance = await this.token.balanceOf(to);
-          assert.equal(recipientBalance, amount);
+          assert(amount.eq(recipientBalance));
         });
 
         it('emits a transfer event', async function () {
@@ -84,33 +152,33 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
     describe('when the recipient is not the zero address', function () {
 
-      describe('when the sender does not have enough balance', function () {
+      describe('when max cap is exceeded', function () {
         const batchListAmount = [
-          50000000 * 10 ** TOKEN_DECIMAL,
-          50000000 * 10 ** TOKEN_DECIMAL,
-          50000000 * 10 ** TOKEN_DECIMAL
+          150000000 * 10 ** TOKEN_DECIMAL,
+          150000000 * 10 ** TOKEN_DECIMAL,
+          150000000 * 10 ** TOKEN_DECIMAL
         ];
 
         it('reverts', async function () {
           await assertRevert(this.token.batch(batchListAccount, batchListAmount, { from: owner }));
-          const senderBalance = await this.token.balanceOf(owner);
-          assert.equal(senderBalance, MAX_TOKEN_SUPPLY);
+          const totalSupply = await this.token.totalSupply();
+          assert.equal(totalSupply, 0);
         });
       });
 
-      describe('when the sender has enough balance', function () {
+      describe('when the max cap is not exceeded', function () {
         const batchListAmount = [
-          25000000 * 10 ** TOKEN_DECIMAL,
-          25000000 * 10 ** TOKEN_DECIMAL,
-          50000000 * 10 ** TOKEN_DECIMAL
+          100000000 * 10 ** TOKEN_DECIMAL,
+          100000000 * 10 ** TOKEN_DECIMAL,
+          185000000 * 10 ** TOKEN_DECIMAL
         ];
 
-        it('transfers the requested amount', async function () {
+        it('mints the requested amount', async function () {
           
           await this.token.batch(batchListAccount, batchListAmount, { from: owner });
 
-          const senderBalance = await this.token.balanceOf(owner);
-          assert.equal(senderBalance, 0);
+          const totalSupply = await this.token.totalSupply();
+          assert(MAX_TOKEN_SUPPLY.eq(totalSupply));
 
           const recipientBalance1 = await this.token.balanceOf(batchListAccount[0]);
           assert.equal(recipientBalance1, batchListAmount[0]);
@@ -122,14 +190,18 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
           assert.equal(recipientBalance3, batchListAmount[2]);          
         });
 
-        it('emits the transfer events', async function () {
+        it('emits the Mint and Transfer events', async function () {
           const { logs } = await this.token.batch(batchListAccount, batchListAmount, { from: owner });
 
-          assert.equal(logs.length, 3);
-          assert.equal(logs[0].event, 'Transfer');
-          assert.equal(logs[0].args.from, owner);
+          assert.equal(logs.length, 6);
+
+          assert.equal(logs[0].event, 'Mint');
           assert.equal(logs[0].args.to, batchListAccount[0]);
-          assert(logs[0].args.value.eq(batchListAmount[0]));
+          assert(logs[0].args.amount.eq(batchListAmount[0]));
+
+          assert.equal(logs[1].event, 'Transfer');
+          assert.equal(logs[1].args.to, batchListAccount[0]);
+          assert(logs[1].args.value.eq(batchListAmount[0]));
         });
       });
     });
@@ -139,8 +211,8 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
       it('reverts', async function () {
         await assertRevert(this.token.batch([batchListAccount[0], ZERO_ADDRESS, batchListAccount[2]], batchListAmount, { from: owner }));
-        const senderBalance = await this.token.balanceOf(owner);
-        assert.equal(senderBalance, MAX_TOKEN_SUPPLY);
+       	const totalSupply = await this.token.totalSupply();
+        assert.equal(totalSupply, 0);
       });
     });
 
@@ -190,6 +262,10 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('approve', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
+
     describe('when the spender is not the zero address', function () {
       const spender = recipient;
 
@@ -211,7 +287,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.approve(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount);
+            assert(amount.eq(allowance));
           });
         });
 
@@ -224,13 +300,13 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.approve(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount);
+            assert(amount.eq(allowance));
           });
         });
       });
 
       describe('when the sender does not have enough balance', function () {
-        const amount = MAX_TOKEN_SUPPLY + 1;
+        const amount = MAX_TOKEN_SUPPLY.plus(1);
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.approve(spender, amount, { from: owner });
@@ -247,7 +323,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.approve(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount);
+            assert(amount.eq(allowance));
           });
         });
 
@@ -260,7 +336,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.approve(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount);
+            assert(amount.eq(allowance));
           });
         });
       });
@@ -274,7 +350,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         await this.token.approve(spender, amount, { from: owner });
 
         const allowance = await this.token.allowance(owner, spender);
-        assert.equal(allowance, amount);
+        assert(amount.eq(allowance));
       });
 
       it('emits an approval event', async function () {
@@ -290,6 +366,10 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('transfer from', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
+
     const spender = recipient;
 
     describe('when the recipient is not the zero address', function () {
@@ -310,7 +390,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             assert.equal(senderBalance, 0);
 
             const recipientBalance = await this.token.balanceOf(to);
-            assert.equal(recipientBalance, amount);
+            assert(amount.eq(recipientBalance));
           });
 
           it('decreases the spender allowance', async function () {
@@ -332,7 +412,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         });
 
         describe('when the owner does not have enough balance', function () {
-          const amount = MAX_TOKEN_SUPPLY + 1;
+          const amount = MAX_TOKEN_SUPPLY.plus(1);
 
           it('reverts', async function () {
             await assertRevert(this.token.transferFrom(owner, to, amount, { from: spender }));
@@ -342,7 +422,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
       describe('when the spender does not have enough approved balance', function () {
         beforeEach(async function () {
-          await this.token.approve(spender, MAX_TOKEN_SUPPLY - 1, { from: owner });
+          await this.token.approve(spender, MAX_TOKEN_SUPPLY.minus(1), { from: owner });
         });
 
         describe('when the owner has enough balance', function () {
@@ -354,7 +434,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         });
 
         describe('when the owner does not have enough balance', function () {
-          const amount = MAX_TOKEN_SUPPLY + 1;
+          const amount = MAX_TOKEN_SUPPLY.plus(1);
 
           it('reverts', async function () {
             await assertRevert(this.token.transferFrom(owner, to, amount, { from: spender }));
@@ -378,6 +458,10 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('decrease approval', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
+
     describe('when the spender is not the zero address', function () {
       const spender = recipient;
 
@@ -405,7 +489,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
         describe('when the spender had an approved amount', function () {
           beforeEach(async function () {
-            await this.token.approve(spender, amount + 1, { from: owner });
+            await this.token.approve(spender, amount.plus(1), { from: owner });
           });
 
           it('decreases the spender allowance subtracting the requested amount', async function () {
@@ -418,7 +502,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       });
 
       describe('when the sender does not have enough balance', function () {
-        const amount = MAX_TOKEN_SUPPLY + 1;
+        const amount = MAX_TOKEN_SUPPLY.plus(1);
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.decreaseApproval(spender, amount, { from: owner });
@@ -441,7 +525,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
         describe('when the spender had an approved amount', function () {
           beforeEach(async function () {
-            await this.token.approve(spender, amount + 1, { from: owner });
+            await this.token.approve(spender, amount.plus(1), { from: owner });
           });
 
           it('decreases the spender allowance subtracting the requested amount', async function () {
@@ -478,6 +562,9 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('increase approval', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
     const amount = MAX_TOKEN_SUPPLY;
 
     describe('when the spender is not the zero address', function () {
@@ -499,7 +586,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.increaseApproval(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount);
+            assert(amount.eq(allowance));
           });
         });
 
@@ -512,13 +599,13 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.increaseApproval(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount + 1);
+            assert(amount.plus(1).eq(allowance));
           });
         });
       });
 
       describe('when the sender does not have enough balance', function () {
-        const amount = MAX_TOKEN_SUPPLY + 1;
+        const amount = MAX_TOKEN_SUPPLY.plus(1);
 
         it('emits an approval event', async function () {
           const { logs } = await this.token.increaseApproval(spender, amount, { from: owner });
@@ -535,7 +622,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.increaseApproval(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount);
+            assert(amount.eq(allowance));
           });
         });
 
@@ -548,7 +635,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
             await this.token.increaseApproval(spender, amount, { from: owner });
 
             const allowance = await this.token.allowance(owner, spender);
-            assert.equal(allowance, amount + 1);
+            assert(amount.plus(1).eq(allowance));
           });
         });
       });
@@ -561,7 +648,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         await this.token.increaseApproval(spender, amount, { from: owner });
 
         const allowance = await this.token.allowance(owner, spender);
-        assert.equal(allowance, amount);
+        assert(amount.eq(allowance));
       });
 
       it('emits an approval event', async function () {
@@ -577,6 +664,10 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('burn', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
+
     const from = owner;
 
     describe('when the given amount is not greater than balance of the sender', function () {
@@ -586,7 +677,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         await this.token.burn(amount, { from });
 
         const balance = await this.token.balanceOf(from);
-        assert.equal(balance, MAX_TOKEN_SUPPLY - 100);
+        assert(MAX_TOKEN_SUPPLY.minus(100).eq(balance));
       });
 
       it('emits a burn event', async function () {
@@ -605,7 +696,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     });
 
     describe('when the given amount is greater than the balance of the sender', function () {
-      const amount = MAX_TOKEN_SUPPLY + 1;
+      const amount = MAX_TOKEN_SUPPLY.plus(1);
 
       it('reverts', async function () {
         await assertRevert(this.token.burn(amount, { from }));
@@ -693,6 +784,10 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   });
 
   describe('pausable token', function () {
+    beforeEach(async function () {
+      await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
+    });
+
     const from = owner;
 
     describe('paused', function () {
@@ -726,7 +821,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         assert.equal(senderBalance, 0);
 
         const recipientBalance = await this.token.balanceOf(recipient);
-        assert.equal(recipientBalance, MAX_TOKEN_SUPPLY);
+        assert(MAX_TOKEN_SUPPLY.eq(recipientBalance));
       });
 
       it('allows to transfer when paused and then unpaused', async function () {
@@ -739,7 +834,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         assert.equal(senderBalance, 0);
 
         const recipientBalance = await this.token.balanceOf(recipient);
-        assert.equal(recipientBalance, MAX_TOKEN_SUPPLY);
+        assert(MAX_TOKEN_SUPPLY.eq(recipientBalance));
       });
 
       it('reverts when trying to transfer when paused', async function () {
@@ -783,7 +878,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         await this.token.transferFrom(owner, recipient, 40, { from: anotherAccount });
 
         const senderBalance = await this.token.balanceOf(owner);
-        assert.equal(senderBalance, MAX_TOKEN_SUPPLY - 40);
+        assert(MAX_TOKEN_SUPPLY.minus(40).eq(senderBalance));
 
         const recipientBalance = await this.token.balanceOf(recipient);
         assert.equal(recipientBalance, 40);
@@ -796,7 +891,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         await this.token.transferFrom(owner, recipient, 40, { from: anotherAccount });
 
         const senderBalance = await this.token.balanceOf(owner);
-        assert.equal(senderBalance, MAX_TOKEN_SUPPLY - 40);
+        assert(MAX_TOKEN_SUPPLY.minus(40).eq(senderBalance));
 
         const recipientBalance = await this.token.balanceOf(recipient);
         assert.equal(recipientBalance, 40);

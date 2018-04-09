@@ -1,11 +1,13 @@
+require('dotenv').config();
 var fs = require('fs');
 var csv = require('fast-csv');
-
+var BigNumber = require('bignumber.js');
 const prodTokenArtifacts = require('../build/contracts/PRODToken.json');
 const contract = require('truffle-contract');
 let ProdToken = contract(prodTokenArtifacts);
 const Web3 = require('web3');
 const HDWalletProvider = require('truffle-hdwallet-provider');
+const tokenDecimals = 8;
 
 function getWallet () {
   try {
@@ -14,12 +16,15 @@ function getWallet () {
     return '';
   }
 }
-/*let web3 = new Web3(new HDWalletProvider(getWallet(),
+
+let walletProvider = new HDWalletProvider(getWallet(),
   process.env.PASSWALLET,
   'https://rinkeby.infura.io/' + process.env.INFURA_API_KEY
-));*/
+);
 
-let web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:9545'));
+let web3 = new Web3(walletProvider);
+
+//let web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:9545'));
 
 ProdToken.setProvider(web3.currentProvider);
 
@@ -38,15 +43,13 @@ async function setAllocation () {
     --------------------------------------------
   `);
 
-  //let accounts = await web3.eth.getAccounts();
-  
   let prodToken = await ProdToken.at(prodTokenAddress);
 
   for (var i = 0; i < distribAddressData.length; i++) {
     try {
       console.log('Attempting to allocate tokens to accounts:', distribAddressData[i], '\n\n');
-      console.log('Amounts are :', distribAmountData[i], '\n\n');
-      let r = await prodToken.batch(distribAddressData[i], distribAmountData[i], { from: '0x627306090abab3a6e1400e9345bc60c78a8bef57', gas: 4500000, gasPrice: 10000000000 });
+      console.log('Amounts are :', distribAmountData[i], '\n\n');     
+      let r = await prodToken.batch(distribAddressData[i], distribAmountData[i], { from: walletProvider.getAddress(), gas: 4500000, gasPrice: 2000000000 });
       console.log('---------- ---------- ---------- ----------');
       console.log('Allocation + transfer was successful.', r.receipt.gasUsed, 'gas used.');
       console.log('---------- ---------- ---------- ----------\n\n');
@@ -57,7 +60,7 @@ async function setAllocation () {
 }
 
 function readFile () {
-  var stream = fs.createReadStream('./allocations.csv');
+  var stream = fs.createReadStream('./scripts/allocations.csv');
 
   let index = 0;
  
@@ -73,7 +76,7 @@ function readFile () {
     .on('data', function (data) {
       if (data[0] !== null && data[0] !== '' && data[1] !== null && data[1] !== '') {
         allocAddressData.push(data[0]);
-        allocAmountData.push(data[1]);
+        allocAmountData.push(new BigNumber(data[1] * 10 ** tokenDecimals));
         index++;
         if (index >= BATCH_SIZE) {
           distribAddressData.push(allocAddressData);

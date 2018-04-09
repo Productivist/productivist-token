@@ -156,20 +156,33 @@ contract PRODToken is ERC20, Pausable {
     
   string public name = "Productivist";      //  token name
   string public symbol = "PROD";           //  token symbol
-  uint256 public decimals = 6;            //  token digit
+  uint256 public decimals = 8;            //  token digit
 
-  uint256 totalSupply_ = 100000000 * 10 ** decimals; // Max supply 100.000.000 token
-  
+
+  // Token distribution, must sumup to 1000
+  uint256 public constant SHARE_PURCHASERS = 617;
+  uint256 public constant SHARE_FOUNDATION = 173;
+  uint256 public constant SHARE_TEAM = 160;
+  uint256 public constant SHARE_BOUNTY = 50;
+
+  uint256 totalSupply_ = 0;
+  uint256 public cap = 385000000 * 10 ** decimals; // Max cap 385.000.000 token
+
   mapping(address => uint256) balances;
   
   mapping (address => mapping (address => uint256)) internal allowed;
 
-  event Burn(address indexed burner, uint256 value);
+  bool public mintingFinished = false;
 
-  function PRODToken(address initialAccount) public {    
-    balances[initialAccount] = totalSupply_;
-    Transfer(0x0, initialAccount, totalSupply_);
+  event Burn(address indexed burner, uint256 value);
+  event Mint(address indexed to, uint256 amount);
+  event MintFinished();
+
+  modifier canMint() {
+    require(!mintingFinished);
+    _;
   }
+
   
   /**
     * @dev total number of tokens in existence
@@ -283,6 +296,52 @@ contract PRODToken is ERC20, Pausable {
     return true;
   }
 
+  /**
+   * @dev Function to mint tokens
+   * @param _to The address that will receive the minted tokens.
+   * @param _amount The amount of tokens to mint.
+   * @return A boolean that indicates if the operation was successful.
+   */
+  function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
+    require(totalSupply_.add(_amount) <= cap);
+    require(_to != address(0));
+    totalSupply_ = totalSupply_.add(_amount);
+    balances[_to] = balances[_to].add(_amount);
+    Mint(_to, _amount);
+    Transfer(address(0), _to, _amount);
+    return true;
+  }
+
+  /**
+   * @dev Function to stop minting new tokens.
+   * @return True if the operation was successful.
+   */
+  function finishMinting() onlyOwner canMint public returns (bool) {
+
+
+    require(SHARE_PURCHASERS + SHARE_FOUNDATION + SHARE_TEAM + SHARE_BOUNTY == 1000);
+
+    // before calling this method totalSupply includes only purchased tokens
+    uint256 onePerThousand = totalSupply_ / SHARE_PURCHASERS; //ignore (totalSupply mod 617) ~= 616e-8,
+    
+    uint256 foundationTokens = onePerThousand * SHARE_FOUNDATION;
+    address foundationAddress = address(0xBa893462c1b714bFD801e918a4541e056f9bd924); //TODO set foundation address
+           
+    uint256 teamTokens = onePerThousand * SHARE_TEAM;
+    address teamAddress = address(0x2418C46F2FA422fE8Cd0BF56Df5e27CbDeBB2590); //TODO set team address
+
+    uint256 bountyTokens = onePerThousand * SHARE_BOUNTY;
+    address bountyAddress = address(0x84bE27E1d3AeD5e6CF40445891d3e2AB7d3d98e8);
+    
+    mint(foundationAddress, foundationTokens);
+    mint(teamAddress, teamTokens);
+    mint(bountyAddress, bountyTokens);
+  
+    mintingFinished = true;
+    MintFinished();
+    return true;
+  }
+
 
   /**
     * @dev Burns a specific amount of tokens.
@@ -301,13 +360,13 @@ contract PRODToken is ERC20, Pausable {
   }
   
   /**
-    * @dev This is an especial owner-only function to make massive tokens assignments. Owner only.
+    * @dev This is an especial owner-only function to make massive tokens minting. Owner only.
     * @param _data is an array of addresses
     * @param _amount is an array of uint256
   */
-  function batch(address[] _data,uint256[] _amount) public whenNotPaused onlyOwner {
+  function batch(address[] _data,uint256[] _amount) public onlyOwner canMint {
     for (uint i = 0; i < _data.length; i++) {
-      assert(transfer(_data[i],_amount[i]));
+      assert(mint(_data[i],_amount[i]));
     }
   }
   

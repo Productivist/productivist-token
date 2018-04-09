@@ -13,13 +13,13 @@ const PRODToken = artifacts.require('PRODToken');
 const PRODTokenVesting = artifacts.require('PRODTokenVesting');
 
 contract('PRODTokenVesting', function ([_, owner, beneficiary]) {
-  const TOKEN_DECIMAL = 6;
-  const MAX_TOKEN_SUPPLY = new BigNumber(100000000 * 10 ** TOKEN_DECIMAL);
+  const TOKEN_DECIMAL = 8;
+  const MAX_TOKEN_SUPPLY = new BigNumber(385000000 * 10 ** TOKEN_DECIMAL);
   const amount = new BigNumber(1000000 * 10 ** TOKEN_DECIMAL);
   
   beforeEach(async function () {
     this.token = await PRODToken.new(owner, { from: owner });
-
+    await this.token.mint(owner, MAX_TOKEN_SUPPLY, { from: owner });
     this.start = latestTime() + duration.minutes(1); // +1 minute so it starts after contract instantiation
     this.cliff = duration.years(1);
     this.duration = duration.years(2);
