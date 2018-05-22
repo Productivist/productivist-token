@@ -4827,9 +4827,9 @@ sol-explore@^1.6.2:
   version "1.6.2"
   resolved "https://registry.yarnpkg.com/sol-explore/-/sol-explore-1.6.2.tgz#43ae8c419fd3ac056a05f8a9d1fb1022cd41ecc2"
 
-solc@0.4.19:
-  version "0.4.19"
-  resolved "https://registry.yarnpkg.com/solc/-/solc-0.4.19.tgz#1af1c4c292a0365a6977d4cbe3fbee7139b4b561"
+solc@0.4.23:
+  version "0.4.23"
+  resolved "https://registry.yarnpkg.com/solc/-/solc-0.4.23.tgz#54a0ff4015827b32fddb62c0a418b5247310a58e"
   dependencies:
     fs-extra "^0.30.0"
     memorystream "^0.3.1"
@@ -5290,13 +5290,13 @@ truffle-hdwallet-provider@DTaste/truffle-hdwallet-provider:
     web3 "^0.20.1"
     web3-provider-engine "^13.2.9"
 
-truffle@4.0.6:
-  version "4.0.6"
-  resolved "https://registry.yarnpkg.com/truffle/-/truffle-4.0.6.tgz#04a23b4c75336f325804d262317f901dbab4f729"
+truffle@4.1.8:
+  version "4.1.8"
+  resolved "https://registry.yarnpkg.com/truffle/-/truffle-4.1.8.tgz#b0b9175e0270145999567a3f0a2337c914a23a9c"
   dependencies:
     mocha "^3.4.2"
     original-require "^1.0.1"
-    solc "0.4.19"
+    solc "0.4.23"
 
 tty-browserify@0.0.0:
   version "0.0.0"

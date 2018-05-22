@@ -1,4 +1,4 @@
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.23;
 
 
 /**
@@ -81,7 +81,7 @@ contract Ownable {
    */
   function transferOwnership(address newOwner) public onlyOwner {
     require(newOwner != address(0));
-    OwnershipTransferred(owner, newOwner);
+    emit OwnershipTransferred(owner, newOwner);
     owner = newOwner;
   }
 
@@ -120,7 +120,7 @@ contract Pausable is Ownable {
    */
   function pause() onlyOwner whenNotPaused public {
     paused = true;
-    Pause();
+    emit Pause();
   }
 
   /**
@@ -128,7 +128,7 @@ contract Pausable is Ownable {
    */
   function unpause() onlyOwner whenPaused public {
     paused = false;
-    Unpause();
+    emit Unpause();
   }
 }
 
@@ -165,6 +165,11 @@ contract PRODToken is ERC20, Pausable {
   uint256 public constant SHARE_TEAM = 160;
   uint256 public constant SHARE_BOUNTY = 50;
 
+  // Wallets addresses
+  address public foundationAddress = 0x0;
+  address public teamAddress = 0x0;
+  address public bountyAddress = 0x0;
+
   uint256 totalSupply_ = 0;
   uint256 public cap = 385000000 * 10 ** decimals; // Max cap 385.000.000 token
 
@@ -183,6 +188,20 @@ contract PRODToken is ERC20, Pausable {
     _;
   }
 
+  /**
+    * @dev Change token name, Owner only.
+    * @param _name The name of the token.
+  */
+  function setName(string _name) onlyOwner public {
+    name = _name;
+  }
+  
+  function setWallets(address _foundation, address _team, address _bounty) onlyOwner canMint {
+    require(_foundation != address(0) && _team != address(0) && _bounty != address(0));
+    foundationAddress = _foundation;
+    teamAddress = _team;
+    bountyAddress = _bounty;
+  } 
   
   /**
     * @dev total number of tokens in existence
@@ -211,7 +230,7 @@ contract PRODToken is ERC20, Pausable {
     // SafeMath.sub will throw if there is not enough balance.
     balances[msg.sender] = balances[msg.sender].sub(_value);
     balances[_to] = balances[_to].add(_value);
-    Transfer(msg.sender, _to, _value);
+    emit Transfer(msg.sender, _to, _value);
     return true;
   }
   
@@ -229,7 +248,7 @@ contract PRODToken is ERC20, Pausable {
     balances[_from] = balances[_from].sub(_value);
     balances[_to] = balances[_to].add(_value);
     allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
-    Transfer(_from, _to, _value);
+    emit Transfer(_from, _to, _value);
     return true;
   }
 
@@ -245,7 +264,7 @@ contract PRODToken is ERC20, Pausable {
   */
   function approve(address _spender, uint256 _value) public whenNotPaused returns (bool) {
     allowed[msg.sender][_spender] = _value;
-    Approval(msg.sender, _spender, _value);
+    emit Approval(msg.sender, _spender, _value);
     return true;
   }
 
@@ -271,7 +290,7 @@ contract PRODToken is ERC20, Pausable {
   */
   function increaseApproval(address _spender, uint _addedValue) public whenNotPaused returns (bool) {
     allowed[msg.sender][_spender] = allowed[msg.sender][_spender].add(_addedValue);
-    Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+    emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
     return true;
   }
 
@@ -292,12 +311,12 @@ contract PRODToken is ERC20, Pausable {
     } else {
       allowed[msg.sender][_spender] = oldValue.sub(_subtractedValue);
     }
-    Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
+    emit Approval(msg.sender, _spender, allowed[msg.sender][_spender]);
     return true;
   }
 
   /**
-   * @dev Function to mint tokens
+   * @dev Function to 	mint tokens
    * @param _to The address that will receive the minted tokens.
    * @param _amount The amount of tokens to mint.
    * @return A boolean that indicates if the operation was successful.
@@ -307,8 +326,8 @@ contract PRODToken is ERC20, Pausable {
     require(_to != address(0));
     totalSupply_ = totalSupply_.add(_amount);
     balances[_to] = balances[_to].add(_amount);
-    Mint(_to, _amount);
-    Transfer(address(0), _to, _amount);
+    emit Mint(_to, _amount);
+    emit Transfer(address(0), _to, _amount);
     return true;
   }
 
@@ -318,27 +337,22 @@ contract PRODToken is ERC20, Pausable {
    */
   function finishMinting() onlyOwner canMint public returns (bool) {
 
-
+    require(foundationAddress != address(0) && teamAddress != address(0) && bountyAddress != address(0));
     require(SHARE_PURCHASERS + SHARE_FOUNDATION + SHARE_TEAM + SHARE_BOUNTY == 1000);
-
+    
     // before calling this method totalSupply includes only purchased tokens
     uint256 onePerThousand = totalSupply_ / SHARE_PURCHASERS; //ignore (totalSupply mod 617) ~= 616e-8,
     
-    uint256 foundationTokens = onePerThousand * SHARE_FOUNDATION;
-    address foundationAddress = address(0xBa893462c1b714bFD801e918a4541e056f9bd924); //TODO set foundation address
-           
-    uint256 teamTokens = onePerThousand * SHARE_TEAM;
-    address teamAddress = address(0x2418C46F2FA422fE8Cd0BF56Df5e27CbDeBB2590); //TODO set team address
-
+    uint256 foundationTokens = onePerThousand * SHARE_FOUNDATION;             
+    uint256 teamTokens = onePerThousand * SHARE_TEAM;   
     uint256 bountyTokens = onePerThousand * SHARE_BOUNTY;
-    address bountyAddress = address(0x84bE27E1d3AeD5e6CF40445891d3e2AB7d3d98e8);
-    
+      
     mint(foundationAddress, foundationTokens);
     mint(teamAddress, teamTokens);
     mint(bountyAddress, bountyTokens);
   
     mintingFinished = true;
-    MintFinished();
+    emit MintFinished();
     return true;
   }
 
@@ -355,29 +369,23 @@ contract PRODToken is ERC20, Pausable {
     address burner = msg.sender;
     balances[burner] = balances[burner].sub(_value);
     totalSupply_ = totalSupply_.sub(_value);
-    Burn(burner, _value);
-    Transfer(burner, address(0), _value);
+    emit Burn(burner, _value);
+    emit Transfer(burner, address(0), _value);
   }
   
+
   /**
-    * @dev This is an especial owner-only function to make massive tokens minting. Owner only.
+    * @dev This is an especial owner-only function to make massive tokens minting.
     * @param _data is an array of addresses
     * @param _amount is an array of uint256
   */
-  function batch(address[] _data,uint256[] _amount) public onlyOwner canMint {
+  function batchMint(address[] _data,uint256[] _amount) public onlyOwner canMint {
     for (uint i = 0; i < _data.length; i++) {
-      assert(mint(_data[i],_amount[i]));
+	mint(_data[i],_amount[i]);
     }
   }
   
-  /**
-    * @dev Change token name, Owner only.
-    * @param _name The name of the token.
-  */
-  function setName(string _name) onlyOwner public {
-    name = _name;
-  }
-  
+
 }
 
 
@@ -414,7 +422,7 @@ contract PRODTokenVesting is Ownable {
    * @param _duration duration in seconds of the period in which the tokens will vest
    * @param _revocable whether the vesting is revocable or not
    */
-  function PRODTokenVesting(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable) public {
+  constructor(address _beneficiary, uint256 _start, uint256 _cliff, uint256 _duration, bool _revocable) public {
     require(_beneficiary != address(0));
     require(_cliff <= _duration);
 
@@ -438,7 +446,7 @@ contract PRODTokenVesting is Ownable {
 
     assert(token.transfer(beneficiary, unreleased));
 
-    Released(unreleased);
+    emit Released(unreleased);
   }
 
   /**
@@ -459,7 +467,7 @@ contract PRODTokenVesting is Ownable {
 
     assert(token.transfer(owner, refund));
 
-    Revoked();
+    emit Revoked();
   }
 
   /**

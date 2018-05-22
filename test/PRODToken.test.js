@@ -55,8 +55,13 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
   describe('finishMinting', function () {
     const PURCHASER_AMOUNT = new BigNumber(100000000 * 10 ** TOKEN_DECIMAL);
     const ONE_PER_THOUSAND = PURCHASER_AMOUNT.dividedToIntegerBy(617);
+    it('should revert when finishMinting when wallets are not set', async function () {
+      await this.token.mint(owner, PURCHASER_AMOUNT, { from: owner });
+      await assertRevert(this.token.finishMinting({ from: owner }));
+    });
     it('should allocate Foundation, Team and Bounty ', async function () {
       await this.token.mint(owner, PURCHASER_AMOUNT, { from: owner });
+      await this.token.setWallets('0xBa893462c1b714bFD801e918a4541e056f9bd924', '0x2418C46F2FA422fE8Cd0BF56Df5e27CbDeBB2590', '0x84bE27E1d3AeD5e6CF40445891d3e2AB7d3d98e8',{ from: owner });
       await this.token.finishMinting({ from: owner });
       let bountyBalance = await this.token.balanceOf('0x84bE27E1d3AeD5e6CF40445891d3e2AB7d3d98e8');  
       assert(bountyBalance.eq(ONE_PER_THOUSAND.mul(50)));
@@ -71,6 +76,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     });
     it('should revert when minting after finishMinting ', async function () {
       await this.token.mint(owner, PURCHASER_AMOUNT, { from: owner });
+      await this.token.setWallets('0xBa893462c1b714bFD801e918a4541e056f9bd924', '0x2418C46F2FA422fE8Cd0BF56Df5e27CbDeBB2590', '0x84bE27E1d3AeD5e6CF40445891d3e2AB7d3d98e8',{ from: owner });
       await this.token.finishMinting({ from: owner });
       await assertRevert(this.token.mint(owner, 1));
     });
@@ -148,7 +154,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
     });
   });
 
-  describe('batch', async function () {
+  describe('batchMint', async function () {
 
     describe('when the recipient is not the zero address', function () {
 
@@ -160,7 +166,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         ];
 
         it('reverts', async function () {
-          await assertRevert(this.token.batch(batchListAccount, batchListAmount, { from: owner }));
+          await assertRevert(this.token.batchMint(batchListAccount, batchListAmount, { from: owner }));
           const totalSupply = await this.token.totalSupply();
           assert.equal(totalSupply, 0);
         });
@@ -175,7 +181,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
         it('mints the requested amount', async function () {
           
-          await this.token.batch(batchListAccount, batchListAmount, { from: owner });
+          await this.token.batchMint(batchListAccount, batchListAmount, { from: owner });
 
           const totalSupply = await this.token.totalSupply();
           assert(MAX_TOKEN_SUPPLY.eq(totalSupply));
@@ -191,7 +197,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
         });
 
         it('emits the Mint and Transfer events', async function () {
-          const { logs } = await this.token.batch(batchListAccount, batchListAmount, { from: owner });
+          const { logs } = await this.token.batchMint(batchListAccount, batchListAmount, { from: owner });
 
           assert.equal(logs.length, 6);
 
@@ -210,7 +216,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
       const batchListAmount = [25000000 * 10 ** TOKEN_DECIMAL, 25000000 * 10 ** TOKEN_DECIMAL, 50000000 * 10 ** TOKEN_DECIMAL];
 
       it('reverts', async function () {
-        await assertRevert(this.token.batch([batchListAccount[0], ZERO_ADDRESS, batchListAccount[2]], batchListAmount, { from: owner }));
+        await assertRevert(this.token.batchMint([batchListAccount[0], ZERO_ADDRESS, batchListAccount[2]], batchListAmount, { from: owner }));
        	const totalSupply = await this.token.totalSupply();
         assert.equal(totalSupply, 0);
       });
@@ -230,7 +236,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
       it('should perform batch for 50 accounts that should have 100 PROD each', async function () {
 
-        await this.token.batch(batch50Account, batchListAmount, { from: owner });
+        await this.token.batchMint(batch50Account, batchListAmount, { from: owner });
         for (var i = 0; i < batch50Account.length; i++) {
           const tokenBalance = await this.token.balanceOf(batch50Account[i]);          
           assert.equal(tokenBalance, 100 * 10 ** TOKEN_DECIMAL);
@@ -252,7 +258,7 @@ contract('PRODToken', function ([_, owner, recipient, anotherAccount]) {
 
       it('should perform batch for 100 accounts that should have 100 PROD each', async function () {
 
-        await this.token.batch(batch100Account, batchListAmount, { from: owner });
+        await this.token.batchMint(batch100Account, batchListAmount, { from: owner });
         for (var i = 0; i < batch100Account.length; i++) {
           const tokenBalance = await this.token.balanceOf(batch100Account[i]);          
           assert.equal(tokenBalance, 100 * 10 ** TOKEN_DECIMAL);

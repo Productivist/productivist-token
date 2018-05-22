@@ -29,6 +29,10 @@ npm-debug.log
 # local env variables
 .env
 
+# wallets
+wallets.zip
+wallets/
+
 # truffle build directory
 build/
 
